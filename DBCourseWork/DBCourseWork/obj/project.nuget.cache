@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "B0JDu1JRwyE=",
+  "success": true,
+  "projectFilePath": "D:\\универ\\базы данных\\DBCourseWork\\DBCourseWork\\DBCourseWork\\DBCourseWork.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\ivang\\.nuget\\packages\\system.data.oledb\\10.0.15\\system.data.oledb.10.0.15.nupkg.sha512"
+  ],
+  "logs": []
+}
