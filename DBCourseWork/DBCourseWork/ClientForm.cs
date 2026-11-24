@@ -14,26 +14,27 @@ namespace DBCourseWork
         private readonly int workerId;
         private readonly DataTable draft = new DataTable();
 
-        public ClientForm()
+        //public ClientForm()
+        //{
+        //    InitializeComponent();
+        //}
+
+        public ClientForm(int workerId, string fullName) 
         {
             InitializeComponent();
-        }
-
-        internal ClientForm(int workerId, string fullName) : this()
-        {
             this.workerId = workerId;
             workerNameLabel.Text = fullName;
 
-            WarehouseDb.BindColumns(materialsGrid, "material_name", "category_name", "unit", "price", "stock_qty");
-            WarehouseDb.BindColumns(draftGrid, "material_name", "quantity", "price_at_order", "line_total");
-            WarehouseDb.BindColumns(ordersGrid, "id", "order_date", "total", "status_text");
-            WarehouseDb.BindColumns(orderDetailsGrid, "material_name", "quantity", "price_at_order", "line_total");
+            WarehouseDb.BindColumns(materialsGrid, "material_name", "category_name", "unit", "price", "quantity");
+            WarehouseDb.BindColumns(draftGrid, "material_name", "quantity", "price", "total");
+            WarehouseDb.BindColumns(ordersGrid, "id", "order_date", "order_total", "status_text");
+            WarehouseDb.BindColumns(orderDetailsGrid, "material_name", "quantity", "price", "total");
 
             draft.Columns.Add("material_id", typeof(int));
             draft.Columns.Add("material_name", typeof(string));
             draft.Columns.Add("quantity", typeof(decimal));
-            draft.Columns.Add("price_at_order", typeof(decimal));
-            draft.Columns.Add("line_total", typeof(decimal));
+            draft.Columns.Add("price", typeof(decimal));
+            draft.Columns.Add("total", typeof(decimal));
             draft.PrimaryKey = [draft.Columns["material_id"]!];
             draftGrid.DataSource = draft;
             UpdateDraftTotal();
@@ -47,6 +48,7 @@ namespace DBCourseWork
             ordersGrid.SelectionChanged += ordersGrid_SelectionChanged;
             workerTabControl.SelectedIndexChanged += workerTabControl_SelectedIndexChanged;
             signOutButton.Click += (_, _) => Close();
+            
         }
 
         private void ClientForm_Shown(object? sender, EventArgs e)
@@ -75,7 +77,7 @@ namespace DBCourseWork
         private void ShowMaterials()
         {
             string sQ = "SELECT m.[id], m.[name] AS [material_name], c.[name] AS [category_name], " +
-                "m.[unit], m.[price], m.[stock_qty] FROM [materials] AS m " +
+                "m.[unit], m.[price], m.[quantity] FROM [materials] AS m " +
                 "INNER JOIN [categories] AS c ON m.[category_id] = c.[id] WHERE 1 = 1";
 
             using OleDbConnection connection = WarehouseDb.Open();
@@ -86,7 +88,7 @@ namespace DBCourseWork
                 cmd.Parameters.AddWithValue("?", categoryId);
             }
             if (inStockCheckBox.Checked)
-                cmd.CommandText += " AND m.[stock_qty] > 0";
+                cmd.CommandText += " AND m.[quantity] > 0";
 
             cmd.CommandText += " ORDER BY m.[name]";
             materialsGrid.DataSource = WarehouseDb.ReadTable(cmd);
@@ -102,7 +104,7 @@ namespace DBCourseWork
                 int materialId = (int)material["id"];
                 DataRow? row = draft.Rows.Find(materialId);
                 decimal quantity = quantityInput.Value + (row == null ? 0M : (decimal)row["quantity"]);
-                if (quantity > Convert.ToDecimal(material["stock_qty"]))
+                if (quantity > Convert.ToDecimal(material["quantity"]))
                     throw new InvalidOperationException("Выбранное количество больше остатка.");
 
                 decimal price = (decimal)material["price"];
@@ -112,8 +114,8 @@ namespace DBCourseWork
                 else
                 {
                     row["quantity"] = quantity;
-                    row["price_at_order"] = price;
-                    row["line_total"] = lineTotal;
+                    row["price"] = price;
+                    row["total"] = lineTotal;
                 }
 
                 UpdateDraftTotal();
@@ -145,7 +147,7 @@ namespace DBCourseWork
         {
             decimal total = 0M;
             foreach (DataRow row in draft.Rows)
-                total += (decimal)row["line_total"];
+                total += (decimal)row["total"];
 
             draftTotalLabel.Text = $"Итого   {total:N2} ₽";
             submitOrderButton.Enabled = draft.Rows.Count > 0;

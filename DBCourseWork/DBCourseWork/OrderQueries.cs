@@ -8,7 +8,7 @@ namespace DBCourseWork
         internal static DataTable ShowOrders(int? workerId = null, string? status = null)
         {
             string sQ = "SELECT o.[id], u.[full_name], o.[order_date], o.[status], " +
-                "CCur(IIf(Count(i.[id]) = 0, 0, Sum(i.[line_total]))) AS [total] " +
+                "CCur(IIf(Count(i.[id]) = 0, 0, Sum(i.[total]))) AS [order_total] " +
                 "FROM ([orders] AS o INNER JOIN [users] AS u ON o.[user_id] = u.[id]) " +
                 "LEFT JOIN [order_items] AS i ON o.[id] = i.[order_id] WHERE 1 = 1";
 
@@ -45,7 +45,7 @@ namespace DBCourseWork
 
         internal static DataTable ShowItems(int orderId, int? workerId = null)
         {
-            string sQ = "SELECT m.[name] AS [material_name], m.[unit], i.[quantity], i.[price_at_order], i.[line_total] " +
+            string sQ = "SELECT m.[name] AS [material_name], m.[unit], i.[quantity], i.[price], i.[total] " +
                 "FROM ([order_items] AS i INNER JOIN [materials] AS m ON i.[material_id] = m.[id]) " +
                 "INNER JOIN [orders] AS o ON i.[order_id] = o.[id] WHERE i.[order_id] = ?";
 
@@ -86,16 +86,16 @@ namespace DBCourseWork
                 double quantity = (double)(decimal)row["quantity"];
                 string materialName = (string)row["material_name"];
 
-                sQ = "SELECT [price] FROM [materials] WHERE [id] = ? AND [stock_qty] >= ?";
+                sQ = "SELECT [price] FROM [materials] WHERE [id] = ? AND [quantity] >= ?";
                 using OleDbCommand priceCmd = new OleDbCommand(sQ, connection, transaction);
                 priceCmd.Parameters.AddWithValue("?", materialId);
                 priceCmd.Parameters.AddWithValue("?", quantity);
                 if (priceCmd.ExecuteScalar() is not decimal price)
                     throw new InvalidOperationException("Недостаточный остаток: " + materialName);
-                if (price != (decimal)row["price_at_order"])
+                if (price != (decimal)row["price"])
                     throw new InvalidOperationException("Цена изменилась: " + materialName + ". Добавь позицию заново.");
 
-                sQ = "INSERT INTO [order_items] ([order_id], [material_id], [quantity], [price_at_order]) VALUES (?, ?, ?, ?)";
+                sQ = "INSERT INTO [order_items] ([order_id], [material_id], [quantity], [price]) VALUES (?, ?, ?, ?)";
                 using OleDbCommand itemCmd = new OleDbCommand(sQ, connection, transaction);
                 itemCmd.Parameters.AddWithValue("?", orderId);
                 itemCmd.Parameters.AddWithValue("?", materialId);
@@ -134,7 +134,7 @@ namespace DBCourseWork
                 foreach (DataRow row in items.Rows)
                 {
                     double quantity = (double)row["quantity"];
-                    sQ = "UPDATE [materials] SET [stock_qty] = Round([stock_qty] - ?, 3) WHERE [id] = ? AND [stock_qty] >= ?";
+                    sQ = "UPDATE [materials] SET [quantity] = Round([quantity] - ?, 3) WHERE [id] = ? AND [quantity] >= ?";
                     using OleDbCommand stockCmd = new OleDbCommand(sQ, connection, transaction);
                     stockCmd.Parameters.AddWithValue("?", quantity);
                     stockCmd.Parameters.AddWithValue("?", (int)row["material_id"]);

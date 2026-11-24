@@ -15,17 +15,14 @@ namespace DBCourseWork
             ExistingTable
         }
 
-        public AdminForm()
+
+        public AdminForm(string fullName)
         {
             InitializeComponent();
-        }
-
-        internal AdminForm(string fullName) : this()
-        {
             managerLabel.Text = fullName + " — управляющий складом";
-            WarehouseDb.BindColumns(ordersGrid, "id", "full_name", "order_date", "status_text", "total");
-            WarehouseDb.BindColumns(orderItemsGrid, "material_name", "unit", "quantity", "price_at_order", "line_total");
-            WarehouseDb.BindColumns(materialsGrid, "material_name", "category_name", "unit", "price", "stock_qty");
+            WarehouseDb.BindColumns(ordersGrid, "id", "full_name", "order_date", "status_text", "order_total");
+            WarehouseDb.BindColumns(orderItemsGrid, "material_name", "unit", "quantity", "price", "total");
+            WarehouseDb.BindColumns(materialsGrid, "material_name", "category_name", "unit", "price", "quantity");
             WarehouseDb.BindColumns(categoriesGrid, "id", "name");
 
             orderStatusComboBox.Items.AddRange(["Все заявки", "Создана", "Одобрена", "Отклонена"]);
@@ -116,7 +113,7 @@ namespace DBCourseWork
         private void ShowMaterials()
         {
             string sQ = "SELECT m.[id], m.[name] AS [material_name], m.[category_id], c.[name] AS [category_name], " +
-                "m.[unit], m.[price], m.[stock_qty] FROM [materials] AS m " +
+                "m.[unit], m.[price], m.[quantity] FROM [materials] AS m " +
                 "INNER JOIN [categories] AS c ON m.[category_id] = c.[id] ORDER BY m.[name]";
             materialsGrid.DataSource = WarehouseDb.ReadTable(sQ);
         }
@@ -145,7 +142,7 @@ namespace DBCourseWork
             materialCategoryComboBox.SelectedValue = (int)row["category_id"];
             materialUnitTextBox.Text = (string)row["unit"];
             materialPriceInput.Value = Math.Min(materialPriceInput.Maximum, (decimal)row["price"]);
-            materialStockInput.Value = Math.Min(materialStockInput.Maximum, Convert.ToDecimal(row["stock_qty"]));
+            materialStockInput.Value = Math.Min(materialStockInput.Maximum, Convert.ToDecimal(row["quantity"]));
         }
 
         private void categoriesGrid_SelectionChanged(object? sender, EventArgs e)
@@ -169,7 +166,7 @@ namespace DBCourseWork
                     throw new InvalidOperationException("Выбери материал для изменения.");
 
                 WriteMaterial(name, categoryId, unit, materialPriceInput.Value, (double)materialStockInput.Value,
-                    selected == null ? null : ((int)selected["id"], (double)selected["stock_qty"]));
+                    selected == null ? null : ((int)selected["id"], (double)selected["quantity"]));
                 ShowMaterials();
             });
         }
@@ -178,8 +175,8 @@ namespace DBCourseWork
             double stock, (int Id, double PreviousStock)? selected = null)
         {
             string sQ = selected.HasValue
-                ? "UPDATE [materials] SET [name] = ?, [category_id] = ?, [unit] = ?, [price] = ?, [stock_qty] = ? WHERE [id] = ? AND [stock_qty] = ?"
-                : "INSERT INTO [materials] ([name], [category_id], [unit], [price], [stock_qty]) VALUES (?, ?, ?, ?, ?)";
+                ? "UPDATE [materials] SET [name] = ?, [category_id] = ?, [unit] = ?, [price] = ?, [quantity] = ? WHERE [id] = ? AND [quantity] = ?"
+                : "INSERT INTO [materials] ([name], [category_id], [unit], [price], [quantity]) VALUES (?, ?, ?, ?, ?)";
             using OleDbConnection connection = WarehouseDb.Open();
             using OleDbCommand cmd = new OleDbCommand(sQ, connection);
             cmd.Parameters.AddWithValue("?", name);
